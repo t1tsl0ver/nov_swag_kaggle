@@ -3,6 +3,7 @@
 import argparse
 from pathlib import Path
 
+from fraud.feature_engineering import FEATURE_GROUPS
 from fraud.features import FEATURE_SETS
 from fraud.train import new_run_id, run_baseline
 from fraud.tune import run_tuning
@@ -17,6 +18,7 @@ def main() -> None:
     parser.add_argument("--drop-feature", action="append", default=[], help="Exclude a feature for ablation")
     parser.add_argument("--feature-set", choices=FEATURE_SETS, default="all")
     parser.add_argument("--categorical-encoding", choices=["native", "onehot"], default="native")
+    parser.add_argument("--feature-group", action="append", choices=FEATURE_GROUPS, default=[])
     parser.add_argument("--compare-to", type=Path, default=None, help="Baseline summary.json to compare OOF AUC")
     parser.add_argument("--importance-sample-size", type=int, default=20000)
     parser.add_argument("--trials", type=int, default=8, help="Number of 5-fold candidates for tune")
@@ -32,13 +34,14 @@ def main() -> None:
     if args.command == "tune":
         result = run_tuning(
             args.data_dir, run_id, args.n_jobs, args.trials, args.importance_sample_size,
-            args.categorical_encoding,
+            args.categorical_encoding, args.feature_group,
         )
     else:
         dropped_features = list(dict.fromkeys([*FEATURE_SETS[args.feature_set], *args.drop_feature]))
         result = run_baseline(
             args.data_dir, run_id, args.n_jobs, dropped_features, args.importance_sample_size,
             args.params_from, args.feature_set, args.compare_to, args.categorical_encoding,
+            args.feature_group,
         )
     print(f"OOF ROC AUC: {result['oof_roc_auc']:.6f}")
     print(f"Report: experiments/{run_id}/summary.json")

@@ -13,7 +13,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedKFold
 
 from fraud.data import ID, TARGET, CompetitionData, load_data
-from fraud.feature_engineering import apply_categorical_encoding
+from fraud.feature_engineering import apply_categorical_encoding, apply_feature_groups
 from fraud.importance import permutation_importance, split_nodes
 
 N_SPLITS = 5
@@ -207,6 +207,7 @@ def run_baseline(
     feature_set: str = "all",
     compare_to: Path | None = None,
     categorical_encoding: str = "native",
+    feature_groups: list[str] | None = None,
 ) -> dict:
     logger = setup_logger()
     logger.info("Run %s: loading data from %s", run_id, data_dir)
@@ -220,6 +221,7 @@ def run_baseline(
         data.x_train = data.x_train.drop(columns=dropped_features)
         data.x_test = data.x_test.drop(columns=dropped_features)
     apply_categorical_encoding(data, categorical_encoding)
+    apply_feature_groups(data, feature_groups or [])
     logger.info(
         "Loaded %d train, %d test, %d features; fraud rate %.3f%%",
         len(data.x_train), len(data.x_test), len(data.x_train.columns), 100 * data.y_train.mean(),
@@ -251,6 +253,7 @@ def run_baseline(
     result["dropped_features"] = dropped_features
     result["feature_set"] = feature_set
     result["categorical_encoding"] = categorical_encoding
+    result["feature_groups"] = feature_groups or []
     result["params_file"] = str(params_file) if params_file is not None else None
     if reference is not None:
         result["comparison"] = {
