@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "s6e11-fraud"
+version = "0.1.0"
+description = "LightGBM experiments for Kaggle Playground Series S6E11"
+requires-python = ">=3.10"
+dependencies = [
+    "lightgbm>=4.6,<5",
+    "numpy>=2,<3",
+    "pandas>=2.2,<3",
+    "scikit-learn>=1.6,<2",
+]
+
+[project.optional-dependencies]
+tuning = ["optuna>=4,<5"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+

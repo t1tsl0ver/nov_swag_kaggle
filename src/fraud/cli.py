@@ -1,0 +1,30 @@
+"""Command-line entry point for experiments."""
+
+import argparse
+from pathlib import Path
+
+from fraud.train import new_run_id, run_baseline
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="S6E11 LightGBM experiments")
+    parser.add_argument("command", choices=["baseline"])
+    parser.add_argument("--data-dir", type=Path, default=Path("data"))
+    parser.add_argument("--run-id", default=None)
+    parser.add_argument("--n-jobs", type=int, default=4)
+    parser.add_argument("--drop-feature", action="append", default=[], help="Exclude a feature for ablation")
+    parser.add_argument("--importance-sample-size", type=int, default=20000)
+    args = parser.parse_args()
+    if args.n_jobs < 1 or args.importance_sample_size < 100:
+        parser.error("--n-jobs must be >=1 and --importance-sample-size must be >=100")
+    run_id = args.run_id or new_run_id(args.command)
+    result = run_baseline(
+        args.data_dir, run_id, args.n_jobs, args.drop_feature, args.importance_sample_size
+    )
+    print(f"OOF ROC AUC: {result['oof_roc_auc']:.6f}")
+    print(f"Report: experiments/{run_id}/summary.json")
+    print(f"Submission: artifacts/{run_id}/submission.csv")
+
+
+if __name__ == "__main__":
+    main()
