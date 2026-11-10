@@ -1,0 +1,97 @@
+{
+  "oof_roc_auc": 0.9463202801566151,
+  "fold_mean_roc_auc": 0.9464102688252785,
+  "fold_std_roc_auc": 0.003552536611545628,
+  "folds": [
+    {
+      "fold": 1,
+      "roc_auc": 0.9450800977501583,
+      "best_iteration": 322
+    },
+    {
+      "fold": 2,
+      "roc_auc": 0.948283737596115,
+      "best_iteration": 398
+    },
+    {
+      "fold": 3,
+      "roc_auc": 0.9507718040606715,
+      "best_iteration": 252
+    },
+    {
+      "fold": 4,
+      "roc_auc": 0.9466178469584475,
+      "best_iteration": 292
+    },
+    {
+      "fold": 5,
+      "roc_auc": 0.941297857761,
+      "best_iteration": 398
+    }
+  ],
+  "params": {
+    "objective": "binary",
+    "metric": "auc",
+    "n_estimators": 400,
+    "learning_rate": 0.07,
+    "max_depth": 5,
+    "num_leaves": 15,
+    "min_child_samples": 100,
+    "colsample_bytree": 0.9,
+    "subsample": 0.9,
+    "subsample_freq": 1,
+    "reg_lambda": 1.0,
+    "max_bin": 127,
+    "verbosity": -1,
+    "random_state": 42,
+    "n_jobs": 4
+  },
+  "features": [
+    "amount_usd",
+    "hours_since_last_txn",
+    "txn_count_last_24h",
+    "card_age_months",
+    "customer_age",
+    "cvv_retry_count",
+    "velocity_score",
+    "day_of_week",
+    "merchant_risk_score",
+    "prior_disputes",
+    "merchant_category",
+    "card_type",
+    "auth_method",
+    "is_foreign_transaction",
+    "is_new_merchant",
+    "used_vpn",
+    "ip_country_mismatch",
+    "billing_shipping_mismatch",
+    "is_ai_generated_scam_attempt",
+    "risk_flag_count",
+    "risk_x_velocity",
+    "auth_no_auth"
+  ],
+  "train_rows": 699960,
+  "test_rows": 299984,
+  "positive_rate": 0.016699525687182123,
+  "cv_seed": 42,
+  "run_id": "weak_focused_001",
+  "kind": "baseline",
+  "dropped_features": [
+    "distance_from_home_km",
+    "time_of_day_hour",
+    "device_type",
+    "account_balance_usd",
+    "channel"
+  ],
+  "feature_set": "weak_ablation_v1",
+  "categorical_encoding": "native",
+  "feature_groups": [
+    "focused_v1"
+  ],
+  "params_file": null,
+  "comparison": {
+    "reference": "experiments\\20261110_124709_baseline\\summary.json",
+    "reference_oof_roc_auc": 0.9464204550470027,
+    "delta_oof_roc_auc": -0.00010017489038760541
+  }
+}
