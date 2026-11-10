@@ -9,7 +9,8 @@ from fraud.data import CompetitionData
 
 FEATURE_GROUPS = (
     "numeric_cat_low", "numeric_cat_all", "decimal_digits", "integer_digits",
-    "roundness", "domain_v1",
+    "roundness", "domain_v1", "risk_flag_count", "risk_x_velocity",
+    "auth_no_auth", "focused_v1",
 )
 
 # Only decimal positions with useful variation in train are included. One test
@@ -184,3 +185,20 @@ def apply_feature_groups(data: CompetitionData, groups: list[str]) -> None:
                 "is_ai_generated_scam_attempt",
             ]
             frame["risk_flag_count"] = frame[flags].sum(axis=1).astype(np.uint8)
+
+    focused = "focused_v1" in groups
+    if focused or any(group in groups for group in ("risk_flag_count", "risk_x_velocity", "auth_no_auth")):
+        for frame in (data.x_train, data.x_test):
+            if focused or "risk_flag_count" in groups:
+                flags = [
+                    "is_foreign_transaction", "is_new_merchant", "used_vpn",
+                    "ip_country_mismatch", "billing_shipping_mismatch",
+                    "is_ai_generated_scam_attempt",
+                ]
+                frame["risk_flag_count"] = frame[flags].sum(axis=1).astype(np.uint8)
+            if focused or "risk_x_velocity" in groups:
+                frame["risk_x_velocity"] = (
+                    frame["merchant_risk_score"] * frame["velocity_score"]
+                ).astype(np.float32)
+            if focused or "auth_no_auth" in groups:
+                frame["auth_no_auth"] = frame["auth_method"].eq("No Authentication").astype(np.uint8)
