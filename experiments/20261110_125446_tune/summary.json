@@ -1,0 +1,85 @@
+{
+  "oof_roc_auc": 0.9461746081980642,
+  "fold_mean_roc_auc": 0.946248261963504,
+  "fold_std_roc_auc": 0.0035287120078159543,
+  "folds": [
+    {
+      "fold": 1,
+      "roc_auc": 0.944736948571002,
+      "best_iteration": 305
+    },
+    {
+      "fold": 2,
+      "roc_auc": 0.947644366593108,
+      "best_iteration": 316
+    },
+    {
+      "fold": 3,
+      "roc_auc": 0.9509143646665311,
+      "best_iteration": 271
+    },
+    {
+      "fold": 4,
+      "roc_auc": 0.9465657115558685,
+      "best_iteration": 287
+    },
+    {
+      "fold": 5,
+      "roc_auc": 0.9413799184310105,
+      "best_iteration": 363
+    }
+  ],
+  "params": {
+    "objective": "binary",
+    "metric": "auc",
+    "n_estimators": 400,
+    "learning_rate": 0.07,
+    "max_depth": 5,
+    "num_leaves": 15,
+    "min_child_samples": 100,
+    "colsample_bytree": 0.9,
+    "subsample": 0.9,
+    "subsample_freq": 1,
+    "reg_lambda": 1.0,
+    "max_bin": 127,
+    "verbosity": -1,
+    "random_state": 42,
+    "n_jobs": 4
+  },
+  "features": [
+    "amount_usd",
+    "hours_since_last_txn",
+    "txn_count_last_24h",
+    "distance_from_home_km",
+    "card_age_months",
+    "customer_age",
+    "account_balance_usd",
+    "cvv_retry_count",
+    "velocity_score",
+    "time_of_day_hour",
+    "day_of_week",
+    "merchant_risk_score",
+    "prior_disputes",
+    "merchant_category",
+    "card_type",
+    "auth_method",
+    "channel",
+    "device_type",
+    "is_foreign_transaction",
+    "is_new_merchant",
+    "used_vpn",
+    "ip_country_mismatch",
+    "billing_shipping_mismatch",
+    "is_ai_generated_scam_attempt"
+  ],
+  "train_rows": 699960,
+  "test_rows": 299984,
+  "positive_rate": 0.016699525687182123,
+  "cv_seed": 42,
+  "run_id": "20261110_125446_tune",
+  "kind": "tuning",
+  "n_trials": 8,
+  "best_trial": 1,
+  "search_best_oof_roc_auc": 0.9461746081980642,
+  "search_seed": 42
+}
