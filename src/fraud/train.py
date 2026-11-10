@@ -208,6 +208,7 @@ def run_baseline(
     compare_to: Path | None = None,
     categorical_encoding: str = "native",
     feature_groups: list[str] | None = None,
+    num_leaves: int | None = None,
 ) -> dict:
     logger = setup_logger()
     logger.info("Run %s: loading data from %s", run_id, data_dir)
@@ -232,6 +233,9 @@ def run_baseline(
         params.update(saved["params"])
         params["n_jobs"] = n_jobs
         logger.info("Using parameters from %s", params_file)
+    if num_leaves is not None:
+        params["num_leaves"] = num_leaves
+        logger.info("Using %d leaves per tree", num_leaves)
     reference = None
     if compare_to is not None:
         reference = json.loads(compare_to.read_text(encoding="utf-8"))
@@ -240,9 +244,8 @@ def run_baseline(
             or reference["train_rows"] != len(data.x_train)
             or reference["test_rows"] != len(data.x_test)
             or reference["positive_rate"] != float(data.y_train.mean())
-            or reference["params"] != params
         ):
-            raise ValueError("Reference run must use the same data, folds, and model parameters")
+            raise ValueError("Reference run must use the same data and folds")
         logger.info("Comparing OOF ROC AUC with %s", compare_to)
     result = evaluate(
         data, params, artifact_dir=Path("artifacts") / run_id,
@@ -256,11 +259,19 @@ def run_baseline(
     result["feature_groups"] = feature_groups or []
     result["params_file"] = str(params_file) if params_file is not None else None
     if reference is not None:
+        changed_params = {
+            key: {"reference": reference["params"].get(key), "current": params.get(key)}
+            for key in sorted(reference["params"].keys() | params.keys())
+            if reference["params"].get(key) != params.get(key)
+        }
         result["comparison"] = {
             "reference": str(compare_to),
             "reference_oof_roc_auc": reference["oof_roc_auc"],
             "delta_oof_roc_auc": result["oof_roc_auc"] - reference["oof_roc_auc"],
+            "changed_params": changed_params,
         }
+        if changed_params:
+            logger.info("Changed model parameters relative to reference: %s", changed_params)
     save_report(result, Path("experiments") / run_id)
     logger.info(
         "Finished: OOF ROC AUC=%.6f; fold mean=%.6f +/- %.6f",

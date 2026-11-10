@@ -166,3 +166,18 @@ ROC AUC после удаления признака. Большие `oof.csv`, 
 `submission.csv` лежат в `artifacts/<run_id>/` и не входят в Git. Отчёт по
 каждому запуску коммитим отдельно.
 
+## Проверка маленьких деревьев
+
+В [обсуждении Kaggle](https://www.kaggle.com/competitions/playground-series-s6e11/discussion/755149)
+LightGBM с 4 листьями показал лучший результат, чем с 31 листом, на тех же пяти
+фолдах. Наш прежний подбор проверял только 15, 31 и 63 листа. Команда ниже
+меняет только число листьев относительно лучшего запуска с 19 признаками:
+
+```powershell
+.venv\Scripts\python -m fraud.cli baseline --feature-set weak_ablation_v1 --num-leaves 4 --compare-to experiments\20261110_124709_baseline\summary.json
+```
+
+Разница OOF ROC AUC и изменённые параметры сохраняются в `comparison` нового
+`summary.json`. Если лучшие итерации упрутся в лимит 400 деревьев, понадобится
+отдельный прогон с более высоким лимитом.
+

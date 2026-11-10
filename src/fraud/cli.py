@@ -23,11 +23,15 @@ def main() -> None:
     parser.add_argument("--importance-sample-size", type=int, default=20000)
     parser.add_argument("--trials", type=int, default=8, help="Number of 5-fold candidates for tune")
     parser.add_argument("--params-from", type=Path, default=None, help="Use params from a prior summary.json")
+    parser.add_argument("--num-leaves", type=int, default=None, help="Override LightGBM leaves per tree for baseline")
     args = parser.parse_args()
     if args.n_jobs < 1 or args.importance_sample_size < 100 or args.trials < 1:
         parser.error("--n-jobs and --trials must be >=1; --importance-sample-size must be >=100")
+    if args.num_leaves is not None and args.num_leaves < 2:
+        parser.error("--num-leaves must be >=2")
     if args.command == "tune" and (
-        args.drop_feature or args.params_from is not None or args.feature_set != "all" or args.compare_to
+        args.drop_feature or args.params_from is not None or args.feature_set != "all"
+        or args.compare_to or args.num_leaves is not None
     ):
         parser.error("Feature ablation and comparison options are only available for baseline")
     run_id = args.run_id or new_run_id(args.command)
@@ -41,7 +45,7 @@ def main() -> None:
         result = run_baseline(
             args.data_dir, run_id, args.n_jobs, dropped_features, args.importance_sample_size,
             args.params_from, args.feature_set, args.compare_to, args.categorical_encoding,
-            args.feature_group,
+            args.feature_group, args.num_leaves,
         )
     print(f"OOF ROC AUC: {result['oof_roc_auc']:.6f}")
     print(f"Report: experiments/{run_id}/summary.json")
