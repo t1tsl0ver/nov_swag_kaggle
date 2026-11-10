@@ -9,6 +9,7 @@ import pandas as pd
 from sklearn.model_selection import ParameterSampler
 
 from fraud.data import load_data
+from fraud.feature_engineering import apply_categorical_encoding
 from fraud.train import BASE_PARAMS, SEED, evaluate, save_report, setup_logger
 
 SEARCH_SPACE = {
@@ -29,6 +30,7 @@ def run_tuning(
     n_jobs: int,
     n_trials: int,
     importance_sample_size: int,
+    categorical_encoding: str = "native",
 ) -> dict:
     logger = setup_logger()
     report_dir = Path("experiments") / run_id
@@ -37,6 +39,7 @@ def run_tuning(
     report_dir.mkdir(parents=True)
     logger.info("Tuning run %s: loading data from %s", run_id, data_dir)
     data = load_data(data_dir)
+    apply_categorical_encoding(data, categorical_encoding)
     logger.info(
         "Loaded %d train, %d test, %d features; %d trials x 5 folds",
         len(data.x_train), len(data.x_test), len(data.x_train.columns), n_trials,
@@ -94,6 +97,7 @@ def run_tuning(
         best_trial=best_trial,
         search_best_oof_roc_auc=best_score,
         search_seed=SEED,
+        categorical_encoding=categorical_encoding,
     )
     save_report(final, report_dir)
     permutation = pd.read_csv(report_dir / "permutation_mean.csv")
