@@ -7,18 +7,29 @@ import pandas as pd
 
 from fraud.data import CompetitionData
 
-FEATURE_GROUPS = ("numeric_cat_low", "numeric_cat_all", "decimal_digits", "domain_v1")
+FEATURE_GROUPS = (
+    "numeric_cat_low", "numeric_cat_all", "decimal_digits", "integer_digits",
+    "roundness", "domain_v1",
+)
 
-# The CSVs have at most two decimal places in these source columns. The
-# merchant risk column has one exceptional value with two places.
+# Only decimal positions with useful variation in train are included. One test
+# amount has thousandths, one test velocity has hundredths, and one train risk
+# value has hundredths; those nearly constant positions are omitted.
 DECIMAL_PLACES = {
     "amount_usd": 2,
     "hours_since_last_txn": 2,
     "distance_from_home_km": 2,
     "account_balance_usd": 2,
     "velocity_score": 1,
-    "merchant_risk_score": 2,
+    "merchant_risk_score": 1,
 }
+
+
+def _scaled_values(series: pd.Series, places: int) -> tuple[np.ndarray, np.ndarray]:
+    values = series.to_numpy(dtype=np.float64)
+    valid = np.isfinite(values)
+    scaled = np.rint(np.where(valid, np.abs(values), 0) * 10**places).astype(np.int64)
+    return scaled, valid
 
 
 def apply_categorical_encoding(data: CompetitionData, encoding: str) -> None:
@@ -49,14 +60,15 @@ def apply_feature_groups(data: CompetitionData, groups: list[str]) -> None:
     unknown = set(groups) - set(FEATURE_GROUPS)
     if unknown:
         raise ValueError(f"Unknown feature groups: {sorted(unknown)}")
+    source_numeric_columns = [
+        column
+        for column in data.x_train.columns
+        if not column.startswith("oh_")
+        and pd.api.types.is_numeric_dtype(data.x_train[column])
+        and not pd.api.types.is_bool_dtype(data.x_train[column])
+    ]
     if any(group in groups for group in ("numeric_cat_low", "numeric_cat_all")):
-        numeric_columns = [
-            column
-            for column in data.x_train.columns
-            if not column.startswith("oh_")
-            and pd.api.types.is_numeric_dtype(data.x_train[column])
-            and not pd.api.types.is_bool_dtype(data.x_train[column])
-        ]
+        numeric_columns = source_numeric_columns
         if "numeric_cat_all" not in groups:
             numeric_columns = [
                 column for column in numeric_columns if data.x_train[column].nunique(dropna=True) <= 1000
@@ -75,15 +87,49 @@ def apply_feature_groups(data: CompetitionData, groups: list[str]) -> None:
             if column not in data.x_train:
                 continue
             for frame in (data.x_train, data.x_test):
-                values = frame[column].to_numpy(dtype=np.float64)
-                valid = np.isfinite(values)
-                scaled = np.rint(np.where(valid, np.abs(values), 0) * 10**places).astype(np.int64)
+                scaled, valid = _scaled_values(frame[column], places)
                 for place in range(1, places + 1):
                     codes = ((scaled // 10 ** (places - place)) % 10).astype(np.int8)
                     codes[~valid] = -1
                     frame[f"{column}__d{place}"] = pd.Categorical.from_codes(
                         codes, categories=range(10)
                     )
+
+    if "integer_digits" in groups:
+        for column in source_numeric_columns:
+            arrays = []
+            for frame in (data.x_train, data.x_test):
+                values = frame[column].to_numpy(dtype=np.float64)
+                valid = np.isfinite(values)
+                whole = np.where(valid, np.floor(np.abs(values)), 0).astype(np.int64)
+                arrays.append((frame, whole, valid))
+            width = len(str(max(int(whole.max()) for _, whole, _ in arrays)))
+            for frame, whole, valid in arrays:
+                for place in range(width):
+                    codes = ((whole // 10**place) % 10).astype(np.int8)
+                    codes[~valid] = -1
+                    frame[f"{column}__i{place}"] = pd.Categorical.from_codes(
+                        codes, categories=range(10)
+                    )
+
+    if "roundness" in groups:
+        for column in source_numeric_columns:
+            places = DECIMAL_PLACES.get(column, 0)
+            arrays = [(frame, *_scaled_values(frame[column], places)) for frame in (data.x_train, data.x_test)]
+            width = len(str(max(int(scaled.max()) for _, scaled, _ in arrays)))
+            for frame, scaled, valid in arrays:
+                last_digit = (scaled % 10).astype(np.int8)
+                last_digit[~valid] = -1
+                frame[f"{column}__last_digit"] = pd.Categorical.from_codes(
+                    last_digit, categories=range(10)
+                )
+                frame[f"{column}__ends_0_or_5"] = np.isin(last_digit, [0, 5]).astype(np.uint8)
+                trailing_zeros = np.zeros(len(scaled), dtype=np.uint8)
+                nonzero = (scaled != 0) & valid
+                for power in range(1, width + 1):
+                    trailing_zeros += ((scaled % 10**power == 0) & nonzero).astype(np.uint8)
+                trailing_zeros[(scaled == 0) & valid] = width
+                frame[f"{column}__trailing_zeros"] = trailing_zeros
 
     if "domain_v1" in groups:
         required = {
