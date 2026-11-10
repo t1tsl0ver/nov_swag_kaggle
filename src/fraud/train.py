@@ -209,6 +209,7 @@ def run_baseline(
     categorical_encoding: str = "native",
     feature_groups: list[str] | None = None,
     num_leaves: int | None = None,
+    n_estimators: int | None = None,
 ) -> dict:
     logger = setup_logger()
     logger.info("Run %s: loading data from %s", run_id, data_dir)
@@ -236,6 +237,9 @@ def run_baseline(
     if num_leaves is not None:
         params["num_leaves"] = num_leaves
         logger.info("Using %d leaves per tree", num_leaves)
+    if n_estimators is not None:
+        params["n_estimators"] = n_estimators
+        logger.info("Using up to %d boosting rounds", n_estimators)
     reference = None
     if compare_to is not None:
         reference = json.loads(compare_to.read_text(encoding="utf-8"))
