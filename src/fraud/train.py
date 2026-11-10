@@ -66,7 +66,7 @@ def progress_callback(logger: logging.Logger, fold: int, max_trees: int):
                 None,
             )
             logger.info(
-                "Fold %d: tree %d/%d, valid AUC=%s, elapsed %.0f s, <=~%.0f s to tree limit",
+                "Fold %d: tree %d/%d, valid AUC=%s, elapsed %.0f s, ~%.0f s to tree limit",
                 fold, trees, max_trees, f"{auc:.6f}" if auc is not None else "n/a", elapsed, upper_bound,
             )
 
@@ -175,7 +175,7 @@ def evaluate(
 
 
 def save_report(result: dict, report_dir: Path) -> None:
-    report_dir.mkdir(parents=True, exist_ok=False)
+    report_dir.mkdir(parents=True, exist_ok=True)
     importance = result.pop("importance", None)
     permutation = result.pop("permutation_importance", None)
     nodes = result.pop("tree_nodes", None)
@@ -202,6 +202,7 @@ def run_baseline(
     n_jobs: int,
     dropped_features: list[str],
     importance_sample_size: int,
+    params_file: Path | None = None,
 ) -> dict:
     logger = setup_logger()
     logger.info("Run %s: loading data from %s", run_id, data_dir)
@@ -217,6 +218,11 @@ def run_baseline(
         len(data.x_train), len(data.x_test), len(data.x_train.columns), 100 * data.y_train.mean(),
     )
     params = {**BASE_PARAMS, "n_jobs": n_jobs}
+    if params_file is not None:
+        saved = json.loads(params_file.read_text(encoding="utf-8"))
+        params.update(saved["params"])
+        params["n_jobs"] = n_jobs
+        logger.info("Using parameters from %s", params_file)
     result = evaluate(
         data, params, artifact_dir=Path("artifacts") / run_id,
         importance_sample_size=importance_sample_size, logger=logger,
@@ -224,6 +230,7 @@ def run_baseline(
     result["run_id"] = run_id
     result["kind"] = "baseline"
     result["dropped_features"] = dropped_features
+    result["params_file"] = str(params_file) if params_file is not None else None
     save_report(result, Path("experiments") / run_id)
     logger.info(
         "Finished: OOF ROC AUC=%.6f; fold mean=%.6f +/- %.6f",

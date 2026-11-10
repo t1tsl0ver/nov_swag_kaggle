@@ -10,13 +10,23 @@ https://www.kaggle.com/competitions/playground-series-s6e11/overview
 - `experiments/` — небольшие отчёты о запусках, входят в Git.
 - `artifacts/` — OOF, сабмиты и модели, остаются локально.
 
-Данные положи прямо в `data/`. Установка и первый запуск из корня проекта:
+Данные положи прямо в `data/`. Установка и запуск из корня проекта:
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\python -m pip install -e .
 .venv\Scripts\python -m fraud.cli baseline
+.venv\Scripts\python -m fraud.cli tune --trials 8
 ```
+
+`baseline` использует один фиксированный набор параметров. `tune` сначала
+проверяет его, затем случайно выбирает ещё семь наборов из заданной сетки.
+Каждый набор оценивается на **одних и тех же пяти фолдах** по общему OOF ROC AUC;
+лучший повторно обучается на пяти фолдах для сабмита и анализа признаков.
+Подбор таким способом — random search; число попыток меняется через `--trials`.
+Все попытки и их оценки записываются в `experiments/<run_id>/trials.csv` сразу
+после окончания каждой попытки. Подбор может занять заметно больше времени,
+чем `baseline`: по умолчанию это 8 × 5 фолдов для сравнения и ещё 5 для сабмита.
 
 При запуске `experiments/latest_report.txt` перезаписывается. В нём видно
 загрузку данных, текущий фолд, число деревьев, ROC AUC на валидации и грубую
@@ -33,6 +43,12 @@ python -m venv .venv
 
 ```powershell
 .venv\Scripts\python -m fraud.cli baseline --drop-feature merchant_category
+```
+
+После подбора можно повторять эксперименты с лучшими параметрами:
+
+```powershell
+.venv\Scripts\python -m fraud.cli baseline --params-from experiments\RUN_ID\summary.json --drop-feature merchant_category
 ```
 
 Отрицательное или нулевое падение ROC AUC при перемешивании может быть шумом

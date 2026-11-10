@@ -14,9 +14,6 @@ dependencies = [
     "scikit-learn>=1.6,<2",
 ]
 
-[project.optional-dependencies]
-tuning = ["optuna>=4,<5"]
-
 [tool.setuptools.packages.find]
 where = ["src"]
 
