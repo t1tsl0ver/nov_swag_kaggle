@@ -51,6 +51,22 @@ python -m venv .venv
 .venv\Scripts\python -m fraud.cli baseline --params-from experiments\RUN_ID\summary.json --drop-feature merchant_category
 ```
 
+## Проверка слабых признаков после первого baseline
+
+У пяти признаков среднее падение ROC AUC при перемешивании было чуть ниже нуля.
+Это слабый сигнал: все они использовались в деревьях, а разница мала по
+сравнению с шумом. В наборе `weak_ablation_v1` они исключаются **только из
+входа модели**, исходные CSV не меняются. Команда сравнит общий OOF ROC AUC с
+первым запуском, сохраняя те же параметры и фолды:
+
+```powershell
+.venv\Scripts\python -m fraud.cli baseline --feature-set weak_ablation_v1 --compare-to experiments\20261110_123755_baseline\summary.json
+```
+
+Разница появится в `experiments/latest_report.txt` и в `comparison` нового
+`summary.json`. Если изменение окажется небольшим, стоит проверить признаки
+по одному: совместное удаление не показывает вклад каждого по отдельности.
+
 Отрицательное или нулевое падение ROC AUC при перемешивании может быть шумом
 или следствием корреляции признаков. Надёжный критерий — изменение общего OOF
 ROC AUC после удаления признака. Большие `oof.csv`, пять файлов моделей и

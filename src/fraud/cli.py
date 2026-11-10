@@ -3,6 +3,7 @@
 import argparse
 from pathlib import Path
 
+from fraud.features import FEATURE_SETS
 from fraud.train import new_run_id, run_baseline
 from fraud.tune import run_tuning
 
@@ -14,21 +15,26 @@ def main() -> None:
     parser.add_argument("--run-id", default=None)
     parser.add_argument("--n-jobs", type=int, default=4)
     parser.add_argument("--drop-feature", action="append", default=[], help="Exclude a feature for ablation")
+    parser.add_argument("--feature-set", choices=FEATURE_SETS, default="all")
+    parser.add_argument("--compare-to", type=Path, default=None, help="Baseline summary.json to compare OOF AUC")
     parser.add_argument("--importance-sample-size", type=int, default=20000)
     parser.add_argument("--trials", type=int, default=8, help="Number of 5-fold candidates for tune")
     parser.add_argument("--params-from", type=Path, default=None, help="Use params from a prior summary.json")
     args = parser.parse_args()
     if args.n_jobs < 1 or args.importance_sample_size < 100 or args.trials < 1:
         parser.error("--n-jobs and --trials must be >=1; --importance-sample-size must be >=100")
-    if args.command == "tune" and (args.drop_feature or args.params_from is not None):
-        parser.error("--drop-feature and --params-from are only available for baseline")
+    if args.command == "tune" and (
+        args.drop_feature or args.params_from is not None or args.feature_set != "all" or args.compare_to
+    ):
+        parser.error("Feature ablation and comparison options are only available for baseline")
     run_id = args.run_id or new_run_id(args.command)
     if args.command == "tune":
         result = run_tuning(args.data_dir, run_id, args.n_jobs, args.trials, args.importance_sample_size)
     else:
+        dropped_features = list(dict.fromkeys([*FEATURE_SETS[args.feature_set], *args.drop_feature]))
         result = run_baseline(
-            args.data_dir, run_id, args.n_jobs, args.drop_feature, args.importance_sample_size,
-            args.params_from,
+            args.data_dir, run_id, args.n_jobs, dropped_features, args.importance_sample_size,
+            args.params_from, args.feature_set, args.compare_to,
         )
     print(f"OOF ROC AUC: {result['oof_roc_auc']:.6f}")
     print(f"Report: experiments/{run_id}/summary.json")

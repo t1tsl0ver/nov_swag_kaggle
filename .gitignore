@@ -12,4 +12,5 @@ data/*
 
 # Large per-run artifacts stay local; compact experiment reports are tracked.
 artifacts/
+experiments/latest_report.txt
 

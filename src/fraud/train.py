@@ -203,6 +203,8 @@ def run_baseline(
     dropped_features: list[str],
     importance_sample_size: int,
     params_file: Path | None = None,
+    feature_set: str = "all",
+    compare_to: Path | None = None,
 ) -> dict:
     logger = setup_logger()
     logger.info("Run %s: loading data from %s", run_id, data_dir)
@@ -210,6 +212,8 @@ def run_baseline(
     unknown = set(dropped_features) - set(data.x_train.columns)
     if unknown:
         raise ValueError(f"Unknown features to drop: {sorted(unknown)}")
+    if len(set(dropped_features)) == len(data.x_train.columns):
+        raise ValueError("At least one feature must remain after ablation")
     if dropped_features:
         data.x_train = data.x_train.drop(columns=dropped_features)
         data.x_test = data.x_test.drop(columns=dropped_features)
@@ -223,6 +227,18 @@ def run_baseline(
         params.update(saved["params"])
         params["n_jobs"] = n_jobs
         logger.info("Using parameters from %s", params_file)
+    reference = None
+    if compare_to is not None:
+        reference = json.loads(compare_to.read_text(encoding="utf-8"))
+        if (
+            reference["cv_seed"] != SEED
+            or reference["train_rows"] != len(data.x_train)
+            or reference["test_rows"] != len(data.x_test)
+            or reference["positive_rate"] != float(data.y_train.mean())
+            or reference["params"] != params
+        ):
+            raise ValueError("Reference run must use the same data, folds, and model parameters")
+        logger.info("Comparing OOF ROC AUC with %s", compare_to)
     result = evaluate(
         data, params, artifact_dir=Path("artifacts") / run_id,
         importance_sample_size=importance_sample_size, logger=logger,
@@ -230,13 +246,26 @@ def run_baseline(
     result["run_id"] = run_id
     result["kind"] = "baseline"
     result["dropped_features"] = dropped_features
+    result["feature_set"] = feature_set
     result["params_file"] = str(params_file) if params_file is not None else None
+    if reference is not None:
+        result["comparison"] = {
+            "reference": str(compare_to),
+            "reference_oof_roc_auc": reference["oof_roc_auc"],
+            "delta_oof_roc_auc": result["oof_roc_auc"] - reference["oof_roc_auc"],
+        }
     save_report(result, Path("experiments") / run_id)
     logger.info(
         "Finished: OOF ROC AUC=%.6f; fold mean=%.6f +/- %.6f",
         result["oof_roc_auc"], result["fold_mean_roc_auc"], result["fold_std_roc_auc"],
     )
     logger.info("Reports: experiments/%s; submission: artifacts/%s/submission.csv", run_id, run_id)
+    if compare_to is not None:
+        logger.info(
+            "Comparison with %s: reference OOF ROC AUC=%.6f, change=%+.6f",
+            compare_to, result["comparison"]["reference_oof_roc_auc"],
+            result["comparison"]["delta_oof_roc_auc"],
+        )
     permutation = pd.read_csv(Path("experiments") / run_id / "permutation_mean.csv")
     logger.info("Top features by held-out ROC AUC drop:\n%s", permutation.head(10).to_string(index=False))
     logger.info("Non-positive mean ROC AUC drop: %d features", int((permutation["mean"] <= 0).sum()))
