@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Competition files stay local.
+data/*
+!data/.gitkeep
+
+# Large per-run artifacts stay local; compact experiment reports are tracked.
+artifacts/
+
